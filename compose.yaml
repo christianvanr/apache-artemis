@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  activemq:
+    image: apache/activemq-artemis:latest
+    container_name: apache_artemis
+    restart: unless-stopped
+
+    user: "1000:1000"
+    working_dir: /var/lib/artemis-instance
+
+    ports:
+      - "8161:8161"     # Web Console
+      - "61616:61616"   # OpenWire (Core)
+      - "5672:5672"     # AMQP
+      - "1883:1883"     # MQTT
+      - "61613:61613"   # STOMP     
+
+    environment:
+      ARTEMIS_USER: artemis
+      ARTEMIS_PASSWORD: artemis
+      ANONYMOUS_LOGIN: "false"
+      ENABLE_WEB_CONSOLE: "true"
+
+    volumes:
+      - /volume1/docker/artemis:/var/lib/artemis-instance
