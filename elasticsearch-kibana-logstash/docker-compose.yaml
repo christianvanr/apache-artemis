@@ -1,0 +1,58 @@
+services:
+  artemis:
+    image: apache/activemq-artemis:latest
+    container_name: artemis
+    ports:
+      - "8161:8161"   # Web console
+      - "61616:61616" # AMQP / core protocol
+      - "8778:8778"   # Jolokia endpoint
+    environment:
+      ARTEMIS_USER: admin
+      ARTEMIS_PASSWORD: admin
+
+      JAVA_OPTS: >-
+        -javaagent:/opt/jolokia/jolokia-agent.jar=port=8778,host=0.0.0.0
+        -Dcom.sun.management.jmxremote
+        -Dcom.sun.management.jmxremote.local.only=false
+    volumes:
+      - ./jolokia-agent.jar:/opt/jolokia/jolokia-agent.jar
+    networks:
+      - monitoring
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    networks:
+      - monitoring
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.12.0
+    container_name: logstash
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    depends_on:
+      - elasticsearch
+    networks:
+      - monitoring
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    driver: bridge
