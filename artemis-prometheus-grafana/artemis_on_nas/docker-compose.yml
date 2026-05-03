@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  artemis:
+    image: apache/activemq-artemis:latest
+    container_name: artemis-jmx
+    user: "1000:1000"
+    working_dir: /var/lib/artemis-instance
+ 
+    ports:
+      - "8161:8161"
+      - "61616:61616"
+      - "1099:1099"
+      - "9404:9404"
+      - "5672:5672"   
+    environment:
+      ARTEMIS_USER: admin
+      ARTEMIS_PASSWORD: admin
+      AMQ_USER: admin
+      AMQ_PASSWORD: admin
+      JAVA_ARGS: >
+        -Dcom.sun.management.jmxremote=true
+        -Dcom.sun.management.jmxremote.port=1099
+        -Dcom.sun.management.jmxremote.authenticate=false
+        -Dcom.sun.management.jmxremote.ssl=false
+        -Dcom.sun.management.jmxremote.local.only=false
+        -Djava.rmi.server.hostname=artemis-jmx
+        -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent.jar=9404:/opt/jmx-exporter/config.yaml
+        -Dhawtio.authenticationEnabled=true
+        -Dhawtio.realm=activemq
+        -Dhawtio.role=amq
+    volumes:
+      - /volume1/docker/artemis-jmx/jmx-exporter:/opt/jmx-exporter
+      - /volume1/docker/artemis-jmx:/var/lib/artemis-instance

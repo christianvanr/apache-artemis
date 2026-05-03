@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+
+  - job_name: 'artemis-jmx'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['192.168.2.25:9404']
+    scrape_timeout: 5s
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

@@ -1,0 +1,35 @@
+---
+startDelaySeconds: 0
+ssl: false
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Broker-level metrics
+  - pattern: 'org.apache.activemq.artemis<broker="([^"]+)"><>(\w+)'
+    name: artemis_broker_$2
+    labels:
+      broker: "$1"
+
+  # Queue metrics
+  - pattern: 'org.apache.activemq.artemis<broker="([^"]+)", component=addresses, address="([^"]+)", subcomponent=queues, routing-type="([^"]+)", queue="([^"]+)"><>(MessageCount|MessagesAdded|MessagesAcknowledged|ConsumerCount|DeliveringCount|ScheduledCount)'
+    name: artemis_queue_$5
+    labels:
+      broker: "$1"
+      address: "$2"
+      routing_type: "$3"
+      queue: "$4"
+
+  # Address metrics
+  - pattern: 'org.apache.activemq.artemis<broker="([^"]+)", component=addresses, address="([^"]+)"><>(MessageCount|NumberOfMessages|NumberOfBytesPerPage)'
+    name: artemis_address_$3
+    labels:
+      broker: "$1"
+      address: "$2"
+
+  # Acceptor / connection metrics
+  - pattern: 'org.apache.activemq.artemis<broker="([^"]+)", component=acceptors, name="([^"]+)"><>(\w+)'
+    name: artemis_acceptor_$3
+    labels:
+      broker: "$1"
+      acceptor: "$2"
