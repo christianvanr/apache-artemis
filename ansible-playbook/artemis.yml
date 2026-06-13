@@ -1,0 +1,157 @@
+---
+- name: Install and Configure ActiveMQ Artemis
+  hosts: local
+  become: true
+
+  vars:
+    artemis_version: "2.54.0"
+
+    artemis_user: "artemis"
+    artemis_group: "artemis"
+
+    artemis_home: "/opt/artemis"
+
+    broker_name: "artemis"
+    broker_home: "/var/lib/{{ broker_name }}"
+
+    broker_admin_user: "admin"
+    broker_admin_password: "admin"
+
+  tasks:
+
+#    - name: Install Java
+#      apt:
+#        name: openjdk-21-jdk
+#        state: present
+#        update_cache: true
+
+    - name: Create Artemis group
+      group:
+        name: "{{ artemis_group }}"
+        state: present
+
+    - name: Create Artemis user
+      user:
+        name: "{{ artemis_user }}"
+        group: "{{ artemis_group }}"
+        shell: /usr/sbin/nologin
+        home: "{{ artemis_home }}"
+        create_home: false
+
+    - name: Download Apache Artemis
+      get_url:
+        url: "https://downloads.apache.org/artemis/artemis/{{ artemis_version }}/apache-artemis-{{ artemis_version }}-bin.tar.gz"
+        dest: "/tmp/apache-artemis-{{ artemis_version }}-bin.tar.gz"
+        mode: "0644"
+
+    - name: Extract Artemis archive
+      unarchive:
+        src: "/tmp/apache-artemis-{{ artemis_version }}-bin.tar.gz"
+        dest: "/opt"
+        remote_src: true
+        creates: "/opt/apache-artemis-{{ artemis_version }}"
+
+    - name: Rename Artemis installation directory
+      command:
+        cmd: mv /opt/apache-artemis-{{ artemis_version }} {{ artemis_home }}
+      args:
+        creates: "{{ artemis_home }}"
+
+    - name: Set Artemis ownership
+      file:
+        path: "{{ artemis_home }}"
+        owner: "{{ artemis_user }}"
+        group: "{{ artemis_group }}"
+        recurse: true
+
+    - name: Ensure Artemis bin files are executable
+      file:
+        path: "{{ artemis_home }}/bin"
+        mode: "0755"
+        recurse: true
+
+    - name: Check if broker already exists
+      stat:
+        path: "{{ broker_home }}/etc/broker.xml"
+      register: broker_exists
+
+    - name: Create Artemis broker instance
+      command: >
+        {{ artemis_home }}/bin/artemis create {{ broker_home }}
+        --user {{ broker_admin_user }}
+        --password {{ broker_admin_password }}
+        --role admin
+        --allow-anonymous
+      when: not broker_exists.stat.exists
+
+    - name: Show broker creation output
+      debug:
+        var: broker_create.stdout_lines
+      when:
+        - broker_create is defined
+        - broker_create.changed
+
+    - name: Set broker ownership
+      file:
+        path: "{{ broker_home }}"
+        owner: "{{ artemis_user }}"
+        group: "{{ artemis_group }}"
+        recurse: true
+
+    - name: Ensure broker log directory exists
+      file:
+        path: "{{ broker_home }}/log"
+        state: directory
+        owner: "{{ artemis_user }}"
+        group: "{{ artemis_group }}"
+        mode: "0755"
+
+    - name: Ensure broker data directory exists
+      file:
+        path: "{{ broker_home }}/data"
+        state: directory
+        owner: "{{ artemis_user }}"
+        group: "{{ artemis_group }}"
+        mode: "0755"
+
+    - name: Configure bootstrap.xml
+      template:
+        src: bootstrap.xml.j2
+        dest: "{{broker_home }}/etc/bootstrap.xml"
+        owner: "{{ artemis_user }}"
+        group: "{{ artemis_group }}"
+        mode: "0644"
+      notify: restart artemis
+
+    - name: Configure jolokia-access.xml
+      template:
+        src: jolokia-access.xml.j2
+        dest: "{{broker_home}}/etc/jolokia-access.xml"
+        owner: "{{ artemis_user }}"
+        group: "{{ artemis_group }}"
+        mode: "0644"
+      notify: restart artemis
+
+    - name: Create systemd service
+      template:
+        src: artemis.service.j2
+        dest: /etc/systemd/system/artemis.service
+        mode: "0644"
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: true
+
+    - name: Enable and start Artemis
+      systemd:
+        name: artemis
+        enabled: true
+        state: started
+
+  handlers:
+
+    - name: restart artemis
+      systemd:
+        name: artemis
+        state: restarted
+      ignore_errors: true

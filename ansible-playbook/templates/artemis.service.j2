@@ -1,0 +1,18 @@
+[Unit]
+Description=Apache ActiveMQ Artemis
+After=network.target
+
+[Service]
+Type=simple
+User={{ artemis_user }}
+Group={{ artemis_group }}
+
+ExecStart={{ broker_home }}/bin/artemis-service start
+ExecStop={{ broker_home }}/bin/artemis-service stop
+
+UMask=0007
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
