@@ -1,0 +1,81 @@
+---
+- name: Configure Boomi Atom systemd service
+  hosts: localhost
+  become: true
+
+  vars:
+    atom_name: "{{ boomi_atom_name }}"
+
+  tasks:
+    - name: Bevestig dat de Boomi Atom installatie is uitgevoerd
+      ansible.builtin.pause:
+        prompt: |
+          Voordat dit playbook verder gaat, controleer het volgende:
+
+          1. Download de Atom installer door naar:
+             Services > Integration > Manage Runtime Management
+             te gaan in de Boomi Platform Portal.
+
+          2. Klik op:
+             New > Basic Runtime
+
+          3. Selecteer:
+             - Operating System: Linux 64-bit
+             - Setup preference: Local
+
+          4. Klik op Download Installer en genereer een token.
+
+          5. Sla het bestand op en voer het uit als root.
+
+          6. Gebruik overal de standaardwaarden behalve:
+             a. Authentication method: kies optie 2 (Token)
+                en plak het token uit stap 4.
+             b. Data Storage Work Directory:
+                /opt/Boomi_AtomSphere/Atom/{{ atom_name }}
+
+          Is dit uitgevoerd? (j/n)
+      register: boomi_confirm
+
+    - name: Stop playbook wanneer installatie niet is bevestigd
+      ansible.builtin.fail:
+        msg: "Boomi Atom installatie is niet bevestigd. Playbook wordt afgebroken."
+      when: boomi_confirm.user_input | lower != 'j'
+
+    - name: Ensure boomi user exists
+      ansible.builtin.user:
+        name: boomi
+        system: true
+        create_home: true
+        shell: /sbin/nologin
+
+    - name: Set ownership on Atom directory
+      ansible.builtin.file:
+        path: "/opt/Boomi_AtomSphere/Atom/{{ atom_name }}"
+        owner: boomi
+        group: boomi
+        recurse: true
+
+    - name: Set permissions on Atom directory
+      ansible.builtin.file:
+        path: "/opt/Boomi_AtomSphere/Atom/{{ atom_name }}"
+        mode: "0750"
+        recurse: true
+    - name: Deploy Boomi systemd service
+      ansible.builtin.template:
+        src: boomi-atom.service.j2
+        dest: /etc/systemd/system/boomi-atom.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload systemd
+
+    - name: Enable and start Boomi Atom service
+      ansible.builtin.systemd:
+        name: boomi-atom
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true

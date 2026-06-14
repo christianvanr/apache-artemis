@@ -1,0 +1,14 @@
+[Unit]
+Description=Boomi Atom Runtime
+After=network.target
+
+[Service]
+Type=forking
+User=boomi
+Restart=always
+ExecStart=/opt/Boomi_AtomSphere/Atom/{{ atom_name }}/bin/atom start
+ExecStop=/opt/Boomi_AtomSphere/Atom/{{ atom_name }}/bin/atom stop
+ExecReload=/opt/Boomi_AtomSphere/Atom/{{ atom_name }}/bin/atom restart
+
+[Install]
+WantedBy=multi-user.target

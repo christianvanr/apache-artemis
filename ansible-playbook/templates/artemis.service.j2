@@ -7,8 +7,8 @@ Type=simple
 User={{ artemis_user }}
 Group={{ artemis_group }}
 
-ExecStart={{ broker_home }}/bin/artemis-service start
-ExecStop={{ broker_home }}/bin/artemis-service stop
+ExecStart={{ broker_home }}/bin/artemis run
+ExecStop={{ broker_home }}/bin/artemis stop
 
 UMask=0007
 Restart=always
